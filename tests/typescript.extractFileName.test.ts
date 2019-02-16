@@ -4,6 +4,7 @@ import * as path from 'path'
 
 const functions: { [key: string]: ServerlessFunction } = {
     hello: {
+        name: 'hello',
         handler: 'my-folder/hello.handler',
         package: {
             include: [],
@@ -11,6 +12,7 @@ const functions: { [key: string]: ServerlessFunction } = {
         }
     },
     world: {
+        name: 'world',
         handler: 'my-folder/my-subfolder/world.handler',
         package: {
             include: [],
@@ -18,6 +20,7 @@ const functions: { [key: string]: ServerlessFunction } = {
         }
     },
     create: {
+        name: 'create',
         handler: 'create.create',
         package: {
             include: [],

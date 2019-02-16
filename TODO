@@ -1,0 +1,7 @@
+- [ ] Make it only attempt to compile TypeScript files
+- [ ] Remove types.ts
+- [ ] Remove dependency on lodash
+- [ ] Remove dependency on fs-extra
+- [ ] Close out existing PRs
+- [ ] Better gitignore
+- [ ] Make the build system not just mirror the whole workspace

@@ -8,10 +8,24 @@ export interface ServerlessInstance {
   service: {
     provider: {
       name: string
+      stage: string
+      region: string
+      runtime?: string
+      timeout?: number
+      versionFunctions: boolean
     }
     functions: { [key: string]: ServerlessFunction }
     package: ServerlessPackage
-    getAllFunctions: () => string[]
+    load(rawOptions: {}): Promise<any>;
+    setFunctionNames(rawOptions: {}): void;
+    getServiceName(): string;
+    getAllFunctions(): string[];
+    getAllFunctionsNames(): string[];
+    getFunction(functionName: string): ServerlessFunction;
+    getEventInFunction(eventName: string, functionName: string): ServerlessEvent;
+    getAllEventsInFunction(functionName: string): ServerlessEvent[];
+    mergeResourceArrays(): void;
+    update(data: {}): {};
   }
   pluginManager: PluginManager
 }
@@ -23,7 +37,12 @@ export interface ServerlessOptions {
 }
 
 export interface ServerlessFunction {
-  handler: string
+  runtime?: string,
+  handler: string,
+  timeout?: number,
+  memorySize?: number,
+  environment?: { [ name: string ]: string },
+  name: string,
   package: ServerlessPackage
 }
 
@@ -36,4 +55,8 @@ export interface ServerlessPackage {
 
 export interface PluginManager {
   spawn(command: string): Promise<void>
+}
+
+export interface ServerlessEvent {
+  name: string
 }

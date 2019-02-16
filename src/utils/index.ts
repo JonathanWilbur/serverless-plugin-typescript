@@ -21,7 +21,7 @@ const copyIfMissingSymlinkPermission =
 
 export const symlink = (srcpath: string, dstpath: string, type?: string) => {
   try {
-    fs.symlinkSync(srcpath, dstpath, type)
+    fs.symlinkSync(srcpath, dstpath, <fs.SymlinkType>type)
   } catch (error) {
     copyIfMissingSymlinkPermission(srcpath, dstpath, error)
   }

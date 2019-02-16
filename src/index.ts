@@ -1,71 +1,83 @@
 import * as path from 'path'
-import * as fs from 'fs-extra'
-
-import * as _ from 'lodash'
+import * as fs from 'fs-extra' // TODO: Get rid of this.
+import * as _ from 'lodash' // TODO: Get rid of this. (Used in one location.)
 import * as globby from 'globby'
-
 import { ServerlessOptions, ServerlessInstance, ServerlessFunction } from './types'
 import * as typescript from './typescript'
-
 import { watchFiles } from './watchFiles'
 import { symlink } from './utils'
 
-// Folders
-const serverlessFolder = '.serverless'
-const buildFolder = '.build'
+const serverlessFolder : string = '.serverless';
+const buildFolder : string = '.build';
 
 export class TypeScriptPlugin {
 
-  private originalServicePath: string
-  private isWatching: boolean
+  private originalServicePath: string;
+  private isWatching: boolean;
+  private typeScriptFunctions: ServerlessFunction[];
 
-  serverless: ServerlessInstance
-  options: ServerlessOptions
-  commands: { [key: string]: any }
-  hooks: { [key: string]: Function }
-
-  constructor(serverless: ServerlessInstance, options: ServerlessOptions) {
-    this.serverless = serverless
-    this.options = options
-
-    this.hooks = {
-      'before:run:run': async () => {
-        await this.compileTs()
-      },
-      'before:offline:start': async () => {
-        await this.compileTs()
-        this.watchAll()
-      },
-      'before:offline:start:init': async () => {
-        await this.compileTs()
-        this.watchAll()
-      },
-      'before:package:createDeploymentArtifacts': this.compileTs.bind(this),
-      'after:package:createDeploymentArtifacts': this.cleanup.bind(this),
-      'before:deploy:function:packageFunction': this.compileTs.bind(this),
-      'after:deploy:function:packageFunction': this.cleanup.bind(this),
-      'before:invoke:local:invoke': async () => {
-        const emitedFiles = await this.compileTs()
-        if (this.isWatching) {
-          emitedFiles.forEach(filename => {
-            const module = require.resolve(path.resolve(this.originalServicePath, filename))
-            delete require.cache[module]
-          })
-        }
-      },
-      'after:invoke:local:invoke': () => {
-        if (this.options.watch) {
-          this.watchFunction()
-          this.serverless.cli.log('Waiting for changes ...')
-        }
+  public commands: { [key: string]: any }
+  public hooks: { [key: string]: Function } = {
+    'before:run:run': async () => {
+      await this.compileTs()
+    },
+    'before:offline:start': async () => {
+      await this.compileTs()
+      this.watchAll()
+    },
+    'before:offline:start:init': async () => {
+      await this.compileTs()
+      this.watchAll()
+    },
+    'before:package:createDeploymentArtifacts': this.compileTs.bind(this),
+    'after:package:createDeploymentArtifacts': this.cleanup.bind(this),
+    'before:deploy:function:packageFunction': this.compileTs.bind(this),
+    'after:deploy:function:packageFunction': this.cleanup.bind(this),
+    'before:invoke:local:invoke': async () => {
+      const emitedFiles = await this.compileTs()
+      if (this.isWatching) {
+        emitedFiles.forEach(filename => {
+          const module = require.resolve(path.resolve(this.originalServicePath, filename))
+          delete require.cache[module]
+        })
+      }
+    },
+    'after:invoke:local:invoke': () => {
+      if (this.options.watch) {
+        this.watchFunction()
+        this.serverless.cli.log('Waiting for changes ...')
       }
     }
+  };
+
+  constructor(
+    readonly serverless: ServerlessInstance,
+    readonly options: ServerlessOptions
+  ) { }
+
+  private isNodeJSRuntime (f : ServerlessFunction) : boolean {
+    if (f.runtime) {
+      return (f.runtime.indexOf("node") === 0);
+    } else if (
+      this.serverless.service.provider.runtime &&
+      this.serverless.service.provider.runtime.indexOf("node") === 0
+    ) {
+      return true;
+    } else return false;
   }
 
   get functions() {
-    return this.options.function
-      ? { [this.options.function] : this.serverless.service.functions[this.options.function] }
-      : this.serverless.service.functions
+    const ret = {};
+    if (this.options.function) {
+      if (this.isNodeJSRuntime(this.serverless.service.functions[this.options.function]))
+        ret[this.options.function] = this.serverless.service.functions[this.options.function];
+    } else {
+      Object.keys(this.serverless.service.functions).forEach((functionName : string) : void => {
+        if (this.isNodeJSRuntime(this.serverless.service.functions[functionName]))
+          ret[functionName] = this.serverless.service.functions[functionName];
+      });
+    }
+    return ret;
   }
 
   get rootFileNames() {
